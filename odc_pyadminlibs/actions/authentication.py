@@ -168,7 +168,7 @@ def reset_root_account(
                         result['ErrorMessage'] = None
                         if persist_passphrase is True:
                             update_root_account_set_passphrase(
-                                root_account_ref=root_account,
+                                root_account_ref=root_account.root_account_ref,
                                 persistence_path=persistence_path,
                                 persistence_file=persistence_file,
                                 passphrase=root_account.passphrase

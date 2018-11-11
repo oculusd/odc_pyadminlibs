@@ -105,7 +105,12 @@ def read_root_account_by_root_account_ref(
         conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
         connected = True
         c = conn.cursor()
-        c.execute('SELECT email_address,account_name,passphrase,root_session,root_session_create_timestamp FROM root_account WHERE root_account_id=?', (root_account_ref, ))
+        c.execute(
+            'SELECT email_address,account_name,passphrase,root_session,root_session_create_timestamp FROM root_account WHERE root_account_id = ?', 
+            (
+                root_account_ref, 
+            )
+        )
         row = c.fetchone()
         ra = RootAccount(
             email_address=row[0],
@@ -180,7 +185,15 @@ def update_root_account_set_passphrase(
         conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
         connected = True
         c = conn.cursor()
-        c.execute('UPDATE root_account SET passphrase = ?, root_session = null, root_session_create_timestamp = null WHERE root_account_id=?', (passphrase, root_account_ref, ))
+        c.execute(
+            'UPDATE root_account SET passphrase = ?, root_session = ?, root_session_create_timestamp = ? WHERE root_account_id=?', 
+            (
+                passphrase, 
+                None,
+                None,
+                root_account_ref, 
+            )
+        )
         conn.commit()
         conn.close()
         connected = False
