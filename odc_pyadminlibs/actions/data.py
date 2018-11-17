@@ -1,6 +1,6 @@
 # Copyright (c) 2018. All rights reserved. OculusD.com, Inc. Please refer to the LICENSE.txt file for full license information. Licensed in terms of the GPLv3 License.
 
-from odc_pycommons import HOME
+from odc_pycommons import HOME, get_utc_timestamp
 from odc_pycommons.comms import get, json_post, get_service_uri, SERVICE_URIS
 from odc_pycommons.models import RootAccount, Thing, CommsRestFulRequest, CommsResponse
 import traceback
@@ -35,7 +35,7 @@ def _create_sensor_axis_data_list(thing: Thing)->list:
 def log_data_with_root_account(
     root_account: RootAccount,
     thing: Thing,
-    reading_timestamp: str='{}'.format(int(datetime.utcnow().timestamp())),
+    reading_timestamp: str='{}'.format(get_utc_timestamp()),
     service_region: str=None,
     trace_id: str=None
 )->dict:
