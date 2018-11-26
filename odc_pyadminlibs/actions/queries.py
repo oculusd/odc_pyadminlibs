@@ -27,7 +27,6 @@ def _persist_data_to_file(
     thing_name = thing_name.replace(' ', '-')
     base_filename = '{}_{}_'.format(thing_name, get_utc_timestamp())
     if separate_file_per_axis is False:
-
         header_line = 'timestamp'
         for axis_name in axis_names:
             header_line = '{},{}'.format(header_line, axis_name)
@@ -51,54 +50,33 @@ def _persist_data_to_file(
         else:
             raise Exception('Failed to write data to file')
     else:
-        raise Exception('Separate file per axis not yet implemented')
+        file_names = list()
+        for axis_name in axis_names:
+            header_line = 'timestamp,{}'.format(axis_name)
+            file_data = '{}\n'.format(header_line)
+            for timestamp, ts_data in data.items():
+                axis_data_str = ''
+                if ts_data[axis_name] is not None:
+                    axis_data_str = '{}'.format(ts_data[axis_name])
+                record = 'timestamp,{}\n'.format(axis_data_str)
+                file_data = '{}{}'.format(file_data, record)
+
+            axis_file_name_part = axis_name.replace(' ', '-')
+            file_name = '{}_sensor_{}.csv'.format(base_filename, axis_file_name_part)
+            if _write_file(
+                file_path=file_path,
+                file_name=file_name,
+                data=file_data
+            ):
+                file_names.append('{}{}{}'.format(file_path, os.sep, file_name))
+            else:
+                raise Exception('Failed to write data to file')
+        return ', '.join(file_names)
     return file_name
 
 
 
 def _get_all_timestamps(data: dict, axis_names: list)->dict:
-    """
-            {
-                '5 Minute Load Average': [
-                    [1542472807, '1.708984375'], 
-                    [1542472720, '1.83740234375'], 
-                    [1542336213, '1.83154296875'], ....
-                ], 
-                '1 Minute Load Average': [
-                    [1542472807, '1.3369140625'], 
-                    [1542472725, '1.552734375'], 
-                    [1542336213, '1.77587890625'], ....
-                ], 
-                '15 Minute Load Average': [
-                    [1542472807, '1.89404296875'], 
-                    [1542472720, '1.9560546875'], ....
-                ]
-            }
-
-        RESULT:
-            {
-                '1542472807': {
-                    '5 Minute Load Average': '',
-                    '1 Minute Load Average': '',
-                    '15 Minute Load Average': '',
-                },
-                '1542472720': {
-                    '5 Minute Load Average': '',
-                    '1 Minute Load Average': '',
-                    '15 Minute Load Average': '',
-                },
-                '1542472725': {
-                    '5 Minute Load Average': '',
-                    '1 Minute Load Average': '',
-                    '15 Minute Load Average': '',
-                },
-                '1542336213': {
-                    '5 Minute Load Average': '',
-                    '1 Minute Load Average': '',
-                    '15 Minute Load Average': '',
-                }
-            }
-    """
     timestamps = dict()
     try:
         if len(axis_names) > 0:
@@ -115,31 +93,6 @@ def _get_all_timestamps(data: dict, axis_names: list)->dict:
 
 
 def _generate_csv_data(data: dict)->dict:
-    """
-            {
-                '5 Minute Load Average': [
-                    [1542472807, '1.708984375'], 
-                    [1542472720, '1.83740234375'], 
-                    [1542336213, '1.83154296875'], ....
-                ], 
-                '1 Minute Load Average': [
-                    [1542472807, '1.3369140625'], 
-                    [1542472725, '1.552734375'], 
-                    [1542336213, '1.77587890625'], ....
-                ], 
-                '15 Minute Load Average': [
-                    [1542472807, '1.89404296875'], 
-                    [1542472720, '1.9560546875'], ....
-                ]
-            }
-
-        RESULT:
-            timestamp,"5 Minute Load Average","1 Minute Load Average","15 Minute Load Average"
-            1542472807,1.708984375,1.3369140625,1.89404296875
-            1542472720,1.83740234375,,1.9560546875
-            1542472725,,1.552734375,
-            1542336213,1.83154296875,1.77587890625
-    """
     result = dict()
     result['CsvData'] = ''
     result['TimestampOrderedDataSet'] = dict()
