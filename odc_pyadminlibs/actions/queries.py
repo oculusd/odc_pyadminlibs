@@ -6,14 +6,54 @@ import os
 import json
 
 
+def _write_file(file_path: str, file_name: str, data: str)->bool:
+    try:
+        with open('{}{}{}'.format(file_path, os.sep, file_name), 'a') as f:
+            f.write(data)
+    except:
+        print(traceback.format_exc())
+        return False
+    return True
+
 def _persist_data_to_file(
     thing_name: str,
     sensor_name: str,
-    file_path: str,
     data: dict,
+    axis_names: list,
+    file_path: str='.{}'.format(os.sep),
     separate_file_per_axis: bool=False
-)->bool:
-    raise Exception('Not yet implemented')
+)->str:
+    file_name = None
+    thing_name = thing_name.replace(' ', '-')
+    base_filename = '{}_{}_'.format(thing_name, get_utc_timestamp())
+    if separate_file_per_axis is False:
+
+        header_line = 'timestamp'
+        for axis_name in axis_names:
+            header_line = '{},{}'.format(header_line, axis_name)
+        file_data = '{}\n'.format(header_line)
+        for timestamp, ts_data in data.items():
+            record = '{}'.format(timestamp)
+            for axis_name in axis_names:
+                axis_data_str = ''
+                if ts_data[axis_name] is not None:
+                    axis_data_str = '{}'.format(ts_data[axis_name])
+                record = '{},{}'.format(record,axis_data_str)
+            file_data = '{}{}\n'.format(file_data, record)
+
+        file_name = '{}_all-sensors.csv'.format(base_filename)
+        if _write_file(
+            file_path=file_path,
+            file_name=file_name,
+            data=file_data
+        ):
+            return '{}{}{}'.format(file_path, os.sep, file_name)
+        else:
+            raise Exception('Failed to write data to file')
+    else:
+        raise Exception('Separate file per axis not yet implemented')
+    return file_name
+
 
 
 def _get_all_timestamps(data: dict, axis_names: list)->dict:
@@ -168,15 +208,19 @@ def query_thing_sensor(
     result['Message'] = None
     result['TotalRecordsReturned'] = 0
     result['CsvData'] = None
+    result['PersistedFilename'] = None
     final_axis_names = list()
+    final_axis_names_unmodified = list()
     thing_sensor_axis_names = list(thing.thing_sensors[sensor_name].sensor_axes.keys())
     if len(axis_names) == 0:
         for axis_name in thing_sensor_axis_names:
             final_axis_names.append(axis_name.replace(' ', '%20'))
+            final_axis_names_unmodified.append(axis_name)
     else:
         for axis_name in axis_names:
             if axis_name in thing_sensor_axis_names:
                 final_axis_names.append(axis_name.replace(' ', '%20'))
+                final_axis_names_unmodified.append(axis_name)
     sensor_name = sensor_name.replace(' ', '%20')
     final_axis_names_as_string = ''
     for axis_name in thing_sensor_axis_names:
@@ -213,13 +257,15 @@ def query_thing_sensor(
                                 if return_data_set:
                                     result['CsvData']  = generated_csv_data_dict['CsvData']
                                 if persist_to_file:
-                                    _persist_data_to_file(
+                                    file_name = _persist_data_to_file(
                                         thing_name=thing.thing_name,
                                         sensor_name=sensor_name,
                                         file_path=file_path,
                                         data=generated_csv_data_dict['TimestampOrderedDataSet'],
-                                        separate_file_per_axis=separate_file_per_axis
+                                        separate_file_per_axis=separate_file_per_axis,
+                                        axis_names=final_axis_names_unmodified
                                     )
+                                    result['PersistedFilename'] = file_name
                                 result['IsError'] = False
                                 result['ErrorMessage'] = None
                             else:
