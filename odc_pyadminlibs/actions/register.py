@@ -1,7 +1,7 @@
 # Copyright (c) 2018. All rights reserved. OculusD.com, Inc. Please refer to the LICENSE.txt file for full license information. Licensed in terms of the GPLv3 License.
 
 from odc_pycommons import HOME
-from odc_pycommons.comms import json_post, get_service_uri, SERVICE_URIS
+from odc_pycommons.comms import json_post, get_service_uri
 from odc_pycommons.models import RootAccount, CommsRestFulRequest, CommsResponse, Sensor, SensorAxis, SensorAxisReading, Thing
 from odc_pyadminlibs.persistence.root_account_persistence import create_root_account
 from odc_pyadminlibs.persistence.thing_persistence import create_thing
