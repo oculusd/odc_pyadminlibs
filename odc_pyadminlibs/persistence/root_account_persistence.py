@@ -26,32 +26,19 @@ def create_root_account_table(
 
     :returns: bool -- the result: True if successful 
     """
-    conn = None
-    connected = False
     table_created = False
     try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
-        connected = True
-        c = conn.cursor()
         create_database_table(
             database_table_name='root_account',
             database_table_definition='root_account_id TEXT PRIMARY KEY, root_account_data TEXT',
             persistence_file=persistence_file,
-            persistence_path=persistence_path
+            persistence_path=persistence_path,
+            L=L
         )
-        conn.commit()
-        conn.close()
-        connected = False
         table_created = True
         L.info(message='Created table root account table')
-    except:
-        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
+    except:                                                                 # pragma: no cover
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))     # pragma: no cover
     return table_created
 
 
@@ -79,6 +66,7 @@ def create_root_account(
     """
     conn = None
     connected = False
+    created = False
     try:
         conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
         connected = True
@@ -93,6 +81,7 @@ def create_root_account(
         conn.commit()
         conn.close()
         connected = False
+        created = True
     except:
         L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
     if connected:
@@ -101,7 +90,7 @@ def create_root_account(
             conn.close()
         except:
             pass
-    return False
+    return created
 
 
 def read_root_account_by_root_account_ref(

@@ -17,17 +17,23 @@ Usage
 """
 import unittest
 from tests.test_persistence import TestPersistenceInit
+from tests.test_persistence import TestRootAccountPersistence
 
 
 def suite():
     suite = unittest.TestSuite()
 
+    # Test the init module
     suite.addTest(TestPersistenceInit('test_sql_get_connection_positive_01'))
     suite.addTest(TestPersistenceInit('test_sql_get_connection_negative_01'))
     suite.addTest(TestPersistenceInit('test_create_database_table_positive_01'))
     suite.addTest(TestPersistenceInit('test_create_database_table_negative_01'))
     suite.addTest(TestPersistenceInit('test_adapt_decimal'))
     suite.addTest(TestPersistenceInit('test_convert_decimal'))
+
+    # Test the root_account_persistence module
+    suite.addTest(TestRootAccountPersistence('test_create_root_account_table_positive_01'))
+    suite.addTest(TestRootAccountPersistence('test_create_root_account_positive_01'))
 
     return suite
 
