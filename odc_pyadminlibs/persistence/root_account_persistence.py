@@ -4,13 +4,55 @@
 # LICENSE.txt. If this is not the case, you can view the license online at
 # https://www.gnu.org/licenses/lgpl-3.0.txt
 
-from odc_pyadminlibs.persistence import sql_get_connection
+from odc_pyadminlibs.persistence import sql_get_connection, create_database_table
 from odc_pycommons import HOME, OculusDLogger
 import os
 import traceback
 
 
 L = OculusDLogger()
+
+
+def create_root_account_table(
+    persistence_path: str=HOME,
+    persistence_file: str='accounts'
+)->bool:
+    """This function will create the root account table in the database.
+
+    :param persistence_path: containing the path to the database file
+    :type persistence_path: str
+    :param persistence_file: contiaing the filename of the database
+    :type persistence_file: str
+
+    :returns: bool -- the result: True if successful 
+    """
+    conn = None
+    connected = False
+    table_created = False
+    try:
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        connected = True
+        c = conn.cursor()
+        create_database_table(
+            database_table_name='root_account',
+            database_table_definition='root_account_id TEXT PRIMARY KEY, root_account_data TEXT',
+            persistence_file=persistence_file,
+            persistence_path=persistence_path
+        )
+        conn.commit()
+        conn.close()
+        connected = False
+        table_created = True
+        L.info(message='Created table root account table')
+    except:
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
+    if connected:
+        try:
+            conn.commit()
+            conn.close()
+        except:
+            pass
+    return table_created
 
 
 def create_root_account(
@@ -32,19 +74,12 @@ def create_root_account(
 
     :returns: bool -- the result: True if successful 
     """
-    db_file = '{}{}{}'.format(persistence_path, os.sep, persistence_file)
     conn = None
     connected = False
     try:
         conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
         connected = True
         c = conn.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS root_account (root_account_id TEXT PRIMARY KEY, root_account_data TEXT)')
-        conn.commit()
-        if persist_with_passphrase is False:
-            passphrase  = None
-        else:
-            passphrase = root_account.passphrase
         c.execute(
             'INSERT INTO root_account (root_account_id, root_account_data) VALUES (?, ?)',
             (
@@ -56,15 +91,13 @@ def create_root_account(
         conn.close()
         connected = False
     except:
-        traceback.print_exc()
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
     if connected:
         try:
             conn.commit()
             conn.close()
         except:
             pass
-    if os.path.isfile(db_file):
-        return True
     return False
 
 
@@ -105,7 +138,7 @@ def read_root_account_by_root_account_ref(
         conn.close()
         connected = False
     except:
-        traceback.print_exc()
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
     if connected:
         try:
             conn.commit()
@@ -155,7 +188,7 @@ def update_root_account(
         connected = False
         success = True
     except:
-        traceback.print_exc()
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
     if connected:
         try:
             conn.commit()
@@ -191,7 +224,7 @@ def get_root_account_ids(
         conn.close()
         connected = False
     except:
-        traceback.print_exc()
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
     if connected:
         try:
             conn.commit()
