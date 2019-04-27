@@ -106,10 +106,10 @@ def create_database_table(
         try:
             conn.commit()
             conn.close()
-        except:
-            pass
-    if os.path.isfile(db_file) is False:
-        raise Exception('Failed to create database - no database file was created')
+        except:                                                                         # pragma: no cover
+            pass                                                                        # pragma: no cover
+    if os.path.isfile(db_file) is False:                                                # pragma: no cover
+        raise Exception('Failed to create database - no database file was created')     # pragma: no cover
     if result is False:
         raise Exception('Failed to create database')
 
