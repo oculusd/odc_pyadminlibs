@@ -10,12 +10,10 @@ import os
 import traceback
 
 
-L = OculusDLogger()
-
-
 def create_root_account_table(
     persistence_path: str=HOME,
-    persistence_file: str='accounts'
+    persistence_file: str='accounts',
+    L: OculusDLogger=OculusDLogger()
 )->bool:
     """This function will create the root account table in the database.
 
@@ -23,6 +21,8 @@ def create_root_account_table(
     :type persistence_path: str
     :param persistence_file: contiaing the filename of the database
     :type persistence_file: str
+    :param L: logger class, from odc_pycommons
+    :type L: OculusDLogger
 
     :returns: bool -- the result: True if successful 
     """
@@ -30,7 +30,7 @@ def create_root_account_table(
     connected = False
     table_created = False
     try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
         connected = True
         c = conn.cursor()
         create_database_table(
@@ -59,7 +59,8 @@ def create_root_account(
     root_account_id: str,
     root_account: str,
     persistence_path: str=HOME,
-    persistence_file: str='accounts'
+    persistence_file: str='accounts',
+    L: OculusDLogger=OculusDLogger()
 )->bool:
     """This function will persist a new root account into the database.
 
@@ -71,13 +72,15 @@ def create_root_account(
     :type persistence_path: str
     :param persistence_file: contiaing the filename of the database
     :type persistence_file: str
+    :param L: logger class, from odc_pycommons
+    :type L: OculusDLogger
 
     :returns: bool -- the result: True if successful 
     """
     conn = None
     connected = False
     try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
         connected = True
         c = conn.cursor()
         c.execute(
@@ -104,7 +107,8 @@ def create_root_account(
 def read_root_account_by_root_account_ref(
     root_account_id: str,
     persistence_path: str=HOME,
-    persistence_file: str='accounts'
+    persistence_file: str='accounts',
+    L: OculusDLogger=OculusDLogger()
 )->str:
     """This function will load a root account from the database.
 
@@ -114,6 +118,8 @@ def read_root_account_by_root_account_ref(
     :type persistence_path: str
     :param persistence_file: contiaing the filename of the database
     :type persistence_file: str
+    :param L: logger class, from odc_pycommons
+    :type L: OculusDLogger
 
     :returns: str -- contains the data read from the database, typically JSON data
 
@@ -123,7 +129,7 @@ def read_root_account_by_root_account_ref(
     connected = False
     ra = None
     try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
         connected = True
         c = conn.cursor()
         c.execute(
@@ -154,7 +160,8 @@ def update_root_account(
     root_account_id: str,
     root_account: str,
     persistence_path: str=HOME,
-    persistence_file: str='accounts'
+    persistence_file: str='accounts',
+    L: OculusDLogger=OculusDLogger()
 )->bool:
     """This function will update a root account in the database.
 
@@ -166,6 +173,8 @@ def update_root_account(
     :type persistence_path: str
     :param persistence_file: contiaing the filename of the database
     :type persistence_file: str
+    :param L: logger class, from odc_pycommons
+    :type L: OculusDLogger
 
     :returns: bool -- the result: True if successful
     """
@@ -173,7 +182,7 @@ def update_root_account(
     connected = False
     success = False
     try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
         connected = True
         c = conn.cursor()
         c.execute(
@@ -200,7 +209,8 @@ def update_root_account(
 
 def get_root_account_ids(
     persistence_path: str=HOME,
-    persistence_file: str='accounts'
+    persistence_file: str='accounts',
+    L: OculusDLogger=OculusDLogger()
 )->list:
     """This function will return a list of root account ID's from the database.
 
@@ -208,6 +218,8 @@ def get_root_account_ids(
     :type persistence_path: str
     :param persistence_file: contiaing the filename of the database
     :type persistence_file: str
+    :param L: logger class, from odc_pycommons
+    :type L: OculusDLogger
 
     :returns: list -- the list of root account ID's
     """
@@ -215,7 +227,7 @@ def get_root_account_ids(
     connected = False
     ids = list()
     try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file, L=L)
         connected = True
         c = conn.cursor()
         for row in  c.execute('SELECT root_account_id FROM root_account'):
