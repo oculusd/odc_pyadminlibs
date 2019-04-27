@@ -5,17 +5,33 @@
 # https://www.gnu.org/licenses/lgpl-3.0.txt
 
 from odc_pyadminlibs.persistence import sql_get_connection
-from odc_pycommons.models import RootAccount
+from odc_pycommons import HOME, OculusDLogger
 import os
 import traceback
 
 
+L = OculusDLogger()
+
+
 def create_root_account(
-    root_account: RootAccount,
-    persistence_path: str,
-    persistence_file: str,
-    persist_with_passphrase: bool=False,
+    root_account_id: str,
+    root_account: str,
+    persistence_path: str=HOME,
+    persistence_file: str='accounts'
 )->bool:
+    """This function will persist a new root account into the database.
+
+    :param root_account_id: :containing the root account ID
+    :type root_account_id: str
+    :param root_account: Any string representation (usually JSON) representing the root account
+    :type root_account: str
+    :param persistence_path: containing the path to the database file
+    :type persistence_path: str
+    :param persistence_file: contiaing the filename of the database
+    :type persistence_file: str
+
+    :returns: bool -- the result: True if successful 
+    """
     db_file = '{}{}{}'.format(persistence_path, os.sep, persistence_file)
     conn = None
     connected = False
@@ -23,21 +39,17 @@ def create_root_account(
         conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
         connected = True
         c = conn.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS root_account (root_account_id TEXT PRIMARY KEY, email_address TEXT, account_name TEXT, passphrase TEXT, root_session TEXT, root_session_create_timestamp INTEGER)')
+        c.execute('CREATE TABLE IF NOT EXISTS root_account (root_account_id TEXT PRIMARY KEY, root_account_data TEXT)')
         conn.commit()
         if persist_with_passphrase is False:
             passphrase  = None
         else:
             passphrase = root_account.passphrase
         c.execute(
-            'INSERT INTO root_account (root_account_id, email_address, account_name, passphrase, root_session, root_session_create_timestamp) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO root_account (root_account_id, root_account_data) VALUES (?, ?)',
             (
-                root_account.root_account_ref,
-                root_account.email_address,
-                root_account.account_name,
-                passphrase,
-                root_account.root_account_session_token,
-                root_account.root_account_session_create_timestamp
+                root_account_id,
+                root_account
             )
         )
         conn.commit()
@@ -56,52 +68,24 @@ def create_root_account(
     return False
 
 
-def read_root_account_by_email_address(
-    email_address: str,
-    persistence_path: str,
-    persistence_file: str
-)->RootAccount:
-    conn = None
-    connected = False
-    ra = None
-    try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
-        connected = True
-        c = conn.cursor()
-        c.execute('SELECT root_account_id,account_name,passphrase,root_session,root_session_create_timestamp FROM root_account WHERE email_address=?', (email_address, ))
-        row = c.fetchone()
-        ra = RootAccount(
-            email_address=email_address,
-            passphrase=row[2],
-            account_name=row[1],
-            passphrase_is_insecure=True,
-            secure_passphrase=False
-        )
-        ra.set_root_account_ref(root_account_ref=row[0])
-        if row[3] is not None:
-            ra.set_root_account_session_token(root_account_session_token=row[3])
-            ra.root_account_session_create_timestamp = row[4]
-        conn.commit()
-        conn.close()
-        connected = False
-    except:
-        traceback.print_exc()
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
-    if ra is not None:
-        return ra
-    raise Exception('Root account for "{}" not loaded'.format(email_address))
-
-
 def read_root_account_by_root_account_ref(
-    root_account_ref: str,
-    persistence_path: str,
-    persistence_file: str
-)->RootAccount:
+    root_account_id: str,
+    persistence_path: str=HOME,
+    persistence_file: str='accounts'
+)->str:
+    """This function will load a root account from the database.
+
+    :param root_account_id: :containing the root account ID
+    :type root_account_id: str
+    :param persistence_path: containing the path to the database file
+    :type persistence_path: str
+    :param persistence_file: contiaing the filename of the database
+    :type persistence_file: str
+
+    :returns: str -- contains the data read from the database, typically JSON data
+
+    :raises: Exception 
+    """
     conn = None
     connected = False
     ra = None
@@ -110,23 +94,13 @@ def read_root_account_by_root_account_ref(
         connected = True
         c = conn.cursor()
         c.execute(
-            'SELECT email_address,account_name,passphrase,root_session,root_session_create_timestamp FROM root_account WHERE root_account_id = ?', 
+            'SELECT root_account_data FROM root_account WHERE root_account_id = ?', 
             (
-                root_account_ref, 
+                root_account_id, 
             )
         )
         row = c.fetchone()
-        ra = RootAccount(
-            email_address=row[0],
-            passphrase=row[2],
-            account_name=row[1],
-            passphrase_is_insecure=True,
-            secure_passphrase=False
-        )
-        ra.set_root_account_ref(root_account_ref=root_account_ref)
-        if row[3] is not None:
-            ra.set_root_account_session_token(root_account_session_token=row[3])
-            ra.root_account_session_create_timestamp = row[4]
+        ra = '{}'.format(row[0])
         conn.commit()
         conn.close()
         connected = False
@@ -140,28 +114,79 @@ def read_root_account_by_root_account_ref(
             pass
     if ra is not None:
         return ra
-    raise Exception('Root account for "{}" not loaded'.format(root_account_ref))
+    raise Exception('Root account for not loaded')
 
 
-def read_root_accounts_summary(
-    persistence_path: str,
-    persistence_file: str
+def update_root_account(
+    root_account_id: str,
+    root_account: str,
+    persistence_path: str=HOME,
+    persistence_file: str='accounts'
+)->bool:
+    """This function will update a root account in the database.
+
+    :param root_account_id: :containing the root account ID
+    :type root_account_id: str
+    :param root_account: Any string representation (usually JSON) representing the root account
+    :type root_account: str
+    :param persistence_path: containing the path to the database file
+    :type persistence_path: str
+    :param persistence_file: contiaing the filename of the database
+    :type persistence_file: str
+
+    :returns: bool -- the result: True if successful
+    """
+    conn = None
+    connected = False
+    success = False
+    try:
+        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
+        connected = True
+        c = conn.cursor()
+        c.execute(
+            'UPDATE root_account SET root_account_data = ? WHERE root_account_id = ?', 
+            (
+                root_account, 
+                root_account_id, 
+            )
+        )
+        conn.commit()
+        conn.close()
+        connected = False
+        success = True
+    except:
+        traceback.print_exc()
+    if connected:
+        try:
+            conn.commit()
+            conn.close()
+        except:
+            pass
+    return success
+
+
+def get_root_account_ids(
+    persistence_path: str=HOME,
+    persistence_file: str='accounts'
 )->list:
-    root_accounts = list()
+    """This function will return a list of root account ID's from the database.
+
+    :param persistence_path: containing the path to the database file
+    :type persistence_path: str
+    :param persistence_file: contiaing the filename of the database
+    :type persistence_file: str
+
+    :returns: list -- the list of root account ID's
+    """
     conn = None
     connected = False
+    ids = list()
     try:
         conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
         connected = True
         c = conn.cursor()
-        for row in c.execute('SELECT root_account_id FROM root_account'):
-            root_accounts.append(
-                read_root_account_by_root_account_ref(
-                    root_account_ref=row[0],
-                    persistence_path=persistence_path,
-                    persistence_file=persistence_file
-                )
-            )
+        for row in  c.execute('SELECT root_account_id FROM root_account'):
+            ids.append('{}'.format(row[0]))
         conn.commit()
         conn.close()
         connected = False
@@ -173,91 +198,7 @@ def read_root_accounts_summary(
             conn.close()
         except:
             pass
-    return root_accounts
-
-
-def update_root_account_set_passphrase(
-    root_account_ref: str,
-    persistence_path: str,
-    persistence_file: str,
-    passphrase: str=None
-)->RootAccount:
-    conn = None
-    connected = False
-    ra = None
-    try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
-        connected = True
-        c = conn.cursor()
-        c.execute(
-            'UPDATE root_account SET passphrase = ?, root_session = ?, root_session_create_timestamp = ? WHERE root_account_id=?', 
-            (
-                passphrase, 
-                None,
-                None,
-                root_account_ref, 
-            )
-        )
-        conn.commit()
-        conn.close()
-        connected = False
-    except:
-        traceback.print_exc()
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
-    ra = read_root_account_by_root_account_ref(
-        root_account_ref=root_account_ref,
-        persistence_path=persistence_path,
-        persistence_file=persistence_file
-    )
-    if ra is not None:
-        return ra
-    raise Exception('Root account for "{}" not loaded'.format(root_account_ref))
-
-
-def update_root_account_set_session(
-    root_account: RootAccount,
-    persistence_path: str,
-    persistence_file: str,
-)->RootAccount:
-    conn = None
-    connected = False
-    ra = None
-    try:
-        conn = sql_get_connection(data_path=persistence_path, data_file=persistence_file)
-        connected = True
-        c = conn.cursor()
-        c.execute(
-            'UPDATE root_account SET root_session=?, root_session_create_timestamp=? WHERE root_account_id=?', 
-            (
-                root_account.root_account_session_token, 
-                root_account.root_account_session_create_timestamp, 
-                root_account.root_account_ref,
-            )
-        )
-        conn.commit()
-        conn.close()
-        connected = False
-    except:
-        traceback.print_exc()
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
-    ra = read_root_account_by_root_account_ref(
-        root_account_ref=root_account.root_account_ref,
-        persistence_path=persistence_path,
-        persistence_file=persistence_file
-    )
-    if ra is not None:
-        return ra
-    raise Exception('Root account for "{}" not loaded'.format(root_account.root_account_ref))
+    return ids
 
 
 
