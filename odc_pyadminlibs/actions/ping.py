@@ -5,7 +5,7 @@
 # https://www.gnu.org/licenses/lgpl-3.0.txt
 
 from odc_pycommons import HOME, get_utc_timestamp
-from odc_pycommons.comms import get, get_service_uri, SERVICE_URIS
+from odc_pycommons.comms import get, get_service_uri
 from odc_pycommons.models import CommsRequest, CommsResponse
 import traceback
 from datetime import datetime
