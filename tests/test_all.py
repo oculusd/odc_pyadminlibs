@@ -34,6 +34,11 @@ def suite():
     # Test the root_account_persistence module
     suite.addTest(TestRootAccountPersistence('test_create_root_account_table_positive_01'))
     suite.addTest(TestRootAccountPersistence('test_create_root_account_positive_01'))
+    suite.addTest(TestRootAccountPersistence('test_get_root_account_positive_01'))
+    suite.addTest(TestRootAccountPersistence('test_get_root_account_negative_01'))
+    suite.addTest(TestRootAccountPersistence('test_update_root_account_positive_01'))
+    suite.addTest(TestRootAccountPersistence('test_update_root_account_negative_01'))
+    suite.addTest(TestRootAccountPersistence('test_get_root_account_ids'))
 
     return suite
 

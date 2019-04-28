@@ -82,18 +82,18 @@ def create_root_account(
         conn.close()
         connected = False
         created = True
-    except:
-        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
+    except:                                                                 # pragma: no cover
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))     # pragma: no cover
+    if connected:                                                           # pragma: no cover
+        try:                                                                # pragma: no cover
+            conn.commit()                                                   # pragma: no cover
+            conn.close()                                                    # pragma: no cover
+        except:                                                             # pragma: no cover
+            pass                                                            # pragma: no cover
     return created
 
 
-def read_root_account_by_root_account_ref(
+def get_root_account(
     root_account_id: str,
     persistence_path: str=HOME,
     persistence_file: str='accounts',
@@ -132,14 +132,14 @@ def read_root_account_by_root_account_ref(
         conn.commit()
         conn.close()
         connected = False
-    except:
-        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
+    except:                                                                 # pragma: no cover
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))     # pragma: no cover
+    if connected:                                                           # pragma: no cover
+        try:                                                                # pragma: no cover
+            conn.commit()                                                   # pragma: no cover
+            conn.close()                                                    # pragma: no cover
+        except:                                                             # pragma: no cover
+            pass                                                            # pragma: no cover
     if ra is not None:
         return ra
     raise Exception('Root account for not loaded')
@@ -185,14 +185,14 @@ def update_root_account(
         conn.close()
         connected = False
         success = True
-    except:
-        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
+    except:                                                                 # pragma: no cover
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))     # pragma: no cover
+    if connected:                                                           # pragma: no cover
+        try:                                                                # pragma: no cover
+            conn.commit()                                                   # pragma: no cover
+            conn.close()                                                    # pragma: no cover
+        except:                                                             # pragma: no cover
+            pass                                                            # pragma: no cover
     return success
 
 
@@ -224,14 +224,14 @@ def get_root_account_ids(
         conn.commit()
         conn.close()
         connected = False
-    except:
-        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))
-    if connected:
-        try:
-            conn.commit()
-            conn.close()
-        except:
-            pass
+    except:                                                                 # pragma: no cover
+        L.error(message='EXCEPTION: {}'.format(traceback.format_exc()))     # pragma: no cover
+    if connected:                                                           # pragma: no cover
+        try:                                                                # pragma: no cover
+            conn.commit()                                                   # pragma: no cover
+            conn.close()                                                    # pragma: no cover
+        except:                                                             # pragma: no cover
+            pass                                                            # pragma: no cover
     return ids
 
 

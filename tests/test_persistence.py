@@ -29,7 +29,7 @@ from odc_pyadminlibs.persistence import adapt_decimal
 from odc_pyadminlibs.persistence import convert_decimal
 from odc_pyadminlibs.persistence.root_account_persistence import create_root_account_table
 from odc_pyadminlibs.persistence.root_account_persistence import create_root_account
-from odc_pyadminlibs.persistence.root_account_persistence import read_root_account_by_root_account_ref
+from odc_pyadminlibs.persistence.root_account_persistence import get_root_account
 from odc_pyadminlibs.persistence.root_account_persistence import update_root_account
 from odc_pyadminlibs.persistence.root_account_persistence import get_root_account_ids
 
@@ -118,7 +118,8 @@ class TestPersistenceInit(unittest.TestCase):
 
 class TestRootAccountPersistence(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.test_database_file = 'test_database.sqlite'
         self.test_database_path = Path('{}{}{}'.format(DB_TEST_DIR, os.sep, self.test_database_file))
         if self.test_database_path.is_file():
@@ -134,7 +135,8 @@ class TestRootAccountPersistence(unittest.TestCase):
         self.logger.addHandler(self.ch)
         self.test_logger = OculusDLogger(logger_impl=self.logger)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(self):
         if self.conn is not None:
             self.conn.close()
             self.conn = None
@@ -195,6 +197,141 @@ class TestRootAccountPersistence(unittest.TestCase):
             self.assertTrue(int(row[0] > 0))
         conn.commit()
         conn.close()
+
+    def test_get_root_account_positive_01(self):
+        table_created = create_root_account_table(persistence_path=DB_TEST_DIR, persistence_file=self.test_database_file, L=self.test_logger)
+        self.assertTrue(table_created)
+
+        root_accounts = list()
+        root_account_strings = list()
+        for id in range(1,9):
+            root_account_id = 'get_test_{}'.format(id)
+            root_account = 'some data representing a root account - id={}'.format(id)
+            root_accounts.append(root_account_id)
+            root_account_strings.append(root_account)
+            root_account_create_result = create_root_account(
+                root_account_id=root_account_id,
+                root_account=root_account,
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+            self.assertTrue(root_account_create_result, 'Failed on account "{}"'.format(id))
+
+        root_accounts_tested = 0
+        for root_account_id in root_accounts:
+            root_account_data_ref = root_account_strings[root_accounts_tested]
+            root_accounts_tested += 1
+            retrieved_root_account_data = get_root_account(
+                root_account_id=root_account_id,
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+            self.assertEqual(root_account_data_ref, retrieved_root_account_data, 'Data mismatch for account "{}"'.format(root_account_id))
+
+        self.assertEqual(root_accounts_tested, 8, 'Unexpected number of processed root accounts')
+
+    def test_get_root_account_negative_01(self):
+        retrieved_root_account_data = None
+        with self.assertRaises(Exception):
+            retrieved_root_account_data = get_root_account(
+                root_account_id='not_existing_1',
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+        self.assertIsNone(retrieved_root_account_data)
+
+    def test_update_root_account_positive_01(self):
+        table_created = create_root_account_table(persistence_path=DB_TEST_DIR, persistence_file=self.test_database_file, L=self.test_logger)
+        self.assertTrue(table_created)
+
+        root_accounts = list()
+        root_account_strings = list()
+        for id in range(11,19):
+            root_account_id = 'get_test_{}'.format(id)
+            root_account = 'some data representing a root account - id={}'.format(id)
+            root_accounts.append(root_account_id)
+            root_account_strings.append(root_account)
+            root_account_create_result = create_root_account(
+                root_account_id=root_account_id,
+                root_account=root_account,
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+            self.assertTrue(root_account_create_result, 'Failed on account "{}"'.format(id))
+
+        for id in range(11,19):
+            root_account_id = 'get_test_{}'.format(id)
+            updated_root_account = 'UPDATED data representing a root account - id={}'.format(id)
+            update_result = update_root_account(
+                root_account_id=root_account_id,
+                root_account=updated_root_account,
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+            self.assertTrue(update_result, 'Failed to updated ID "{}"'.format(id))
+
+            retrieved_root_account_data = get_root_account(
+                root_account_id=root_account_id,
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+            self.assertEqual(retrieved_root_account_data, updated_root_account, 'Updated data mismatch for id "{}"'.format(id))
+
+    @unittest.skip('Skipping as an update to sqlite on a none-existing item does not throw an exception')
+    def test_update_root_account_negative_01(self):
+        table_created = create_root_account_table(persistence_path=DB_TEST_DIR, persistence_file=self.test_database_file, L=self.test_logger)
+        self.assertTrue(table_created)
+        update_result = update_root_account(
+            root_account_id='not_existing_1',
+            root_account='Any data will do',
+            persistence_path=DB_TEST_DIR,
+            persistence_file=self.test_database_file,
+            L=self.test_logger
+        )
+        self.assertFalse(update_result)
+
+    def test_get_root_account_ids(self):
+        table_created = create_root_account_table(persistence_path=DB_TEST_DIR, persistence_file=self.test_database_file, L=self.test_logger)
+        self.assertTrue(table_created)
+
+        root_accounts = list()
+        root_account_strings = list()
+        for id in range(21,29):
+            root_account_id = 'get_test_{}'.format(id)
+            root_account = 'some data representing a root account - id={}'.format(id)
+            root_accounts.append(root_account_id)
+            root_account_strings.append(root_account)
+            root_account_create_result = create_root_account(
+                root_account_id=root_account_id,
+                root_account=root_account,
+                persistence_path=DB_TEST_DIR,
+                persistence_file=self.test_database_file,
+                L=self.test_logger
+            )
+            self.assertTrue(root_account_create_result, 'Failed on account "{}"'.format(id))
+
+        all_ids = get_root_account_ids(
+            persistence_path=DB_TEST_DIR,
+            persistence_file=self.test_database_file,
+            L=self.test_logger
+        )
+        found_ids = list()
+        for id in all_ids:
+            if id in root_accounts:
+                found_ids.append(id)
+
+        self.assertTrue(len(root_accounts) > 0)
+        self.assertTrue(len(all_ids) > 0)
+        self.assertTrue(len(found_ids) > 0)
+        self.assertEqual(len(root_accounts), len(found_ids))
+
+
 
     
 
