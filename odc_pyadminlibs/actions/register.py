@@ -4,11 +4,11 @@
 # LICENSE.txt. If this is not the case, you can view the license online at
 # https://www.gnu.org/licenses/lgpl-3.0.txt
 
-from odc_pycommons import HOME
+from odc_pycommons import HOME, OculusDLogger
 from odc_pycommons.comms import json_post, get_service_uri
-from odc_pycommons.models import RootAccount, CommsRestFulRequest, CommsResponse, Sensor, SensorAxis, SensorAxisReading, Thing
-from odc_pyadminlibs.persistence.root_account_persistence import create_root_account
-from odc_pyadminlibs.persistence.thing_persistence import create_thing
+from odc_pycommons.models import CommsRequest, CommsResponse, CommsRestFulRequest
+from odc_pyadminlibs.persistence import create_database_table
+from odc_pyadminlibs.persistence.root_account_persistence import create_root_account, create_root_account_table
 import traceback
 import os
 import json
@@ -20,10 +20,11 @@ def root_account_registration(
     account_name: str,
     persist_on_success: bool=True,
     persistence_path: str=HOME,
-    persistence_file: str='root_account',
+    persistence_file: str='accounts',
     persist_with_passphrase: bool=False,
     service_region: str=None,
-    trace_id: str=None
+    trace_id: str=None,
+    L: OculusDLogger=OculusDLogger()
 )->dict:
     result = dict()
     result['IsError'] = True
@@ -32,24 +33,22 @@ def root_account_registration(
     result['ErrorMessage'] = 'The remote service returned an unknown/undefined error'
     result['Message'] = None
     result['RootAccountObj'] = None
-    ra = RootAccount(
-        email_address=email_address,
-        passphrase=passphrase,
-        account_name=account_name,
-        passphrase_is_insecure=False,
-        secure_passphrase=False
-    )
-    data = {
-        'EMailAddress': email_address,
+
+    if create_root_account_table(persistence_path=persistence_path, persistence_file=persistence_file, L=L) is False:
+        result['ErrorMessage'] = 'Failed to create persistence store. Registration call to remote service was NOT made'
+        L.error(message='Failed to create root_account persistence')
+        raise Exception('Failed to create root_account persistence. This action cannot continue')
+
+    request_data = {
         'AccountName': account_name,
-        'PassPhrase': passphrase
+        'PassPhrase': passphrase,
     }
     request = CommsRestFulRequest(
         uri=get_service_uri(service_name='RegisterRootAccount', region=service_region),
-        data=data,
+        data=request_data,
         trace_id=trace_id
     )
-    req_result = json_post(request=request)
+    req_result = json_post(request=request, path_parameters={'emailAddress': email_address})
     if req_result.is_error is False:
         if req_result.response_data is not None:
             try:
@@ -58,17 +57,23 @@ def root_account_registration(
                 result['Message'] = response_dict['Message']
                 if 'IsError' in response_dict:
                     if response_dict['IsError'] is False:
+                        result['RootAccountObj'] = dict()
+                        result['RootAccountObj']['LastKnownStatus'] = response_dict['Data']['RootAccountStatus']
+                        result['RootAccountObj']['RootAccountUser'] = dict()
+                        result['RootAccountObj']['RootAccountUser']['EmailAddress'] = email_address
+                        result['RootAccountObj']['RootAccountUser']['Passphrase'] = None
+                        if persist_with_passphrase is True:
+                            result['RootAccountObj']['RootAccountUser']['Passphrase'] = passphrase
                         result['IsError'] = False
                         result['ErrorMessage'] = None
                         if 'RootAccountId' in response_dict['Data']:
-                            ra.root_account_ref = response_dict['Data']['RootAccountId']
-                            result['RootAccountObj'] = ra
-                            if persist_on_success:
+                            if persist_on_success:                                
                                 create_root_account(
-                                    root_account=ra,
+                                    root_account_id=response_dict['Data']['RootAccountId'],
+                                    root_account=json.dumps(result['RootAccountObj']),
                                     persistence_path=persistence_path,
                                     persistence_file=persistence_file,
-                                    persist_with_passphrase=persist_with_passphrase
+                                    L=L
                                 )
                     else:
                         result['ErrorMessage'] = response_dict['ErrorMessage']
@@ -77,6 +82,7 @@ def root_account_registration(
     return result
     
 
+"""
 def thing_registration(
     root_account: RootAccount,
     thing: Thing,
@@ -129,6 +135,7 @@ def thing_registration(
             except:
                 result['ErrorMessage'] = 'EXCEPTION: {}'.format(traceback.format_exc())
     return result
+"""
 
 
 # EOF
