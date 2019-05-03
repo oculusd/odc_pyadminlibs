@@ -24,7 +24,8 @@ def root_account_registration(
     persist_with_passphrase: bool=False,
     service_region: str=None,
     trace_id: str=None,
-    L: OculusDLogger=OculusDLogger()
+    L: OculusDLogger=OculusDLogger(),
+    remote_request_function: object=json_post
 )->dict:
     result = dict()
     result['IsError'] = True
@@ -48,7 +49,7 @@ def root_account_registration(
         data=request_data,
         trace_id=trace_id
     )
-    req_result = json_post(request=request, path_parameters={'emailAddress': email_address})
+    req_result = remote_request_function(request=request, path_parameters={'emailAddress': email_address})
     if req_result.is_error is False:
         if req_result.response_data is not None:
             try:
