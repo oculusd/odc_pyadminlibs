@@ -35,10 +35,11 @@ def root_account_registration(
     result['Message'] = None
     result['RootAccountObj'] = None
 
-    if create_root_account_table(persistence_path=persistence_path, persistence_file=persistence_file, L=L) is False:
-        result['ErrorMessage'] = 'Failed to create persistence store. Registration call to remote service was NOT made'
-        L.error(message='Failed to create root_account persistence')
-        raise Exception('Failed to create root_account persistence. This action cannot continue')
+    if persist_on_success  is True:
+        if create_root_account_table(persistence_path=persistence_path, persistence_file=persistence_file, L=L) is False:
+            result['ErrorMessage'] = 'Failed to create persistence store. Registration call to remote service was NOT made'
+            L.error(message='Failed to create root_account persistence')
+            raise Exception('Failed to create root_account persistence. This action cannot continue')
 
     request_data = {
         'AccountName': account_name,
