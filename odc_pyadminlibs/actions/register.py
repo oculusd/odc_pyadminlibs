@@ -74,8 +74,8 @@ def root_account_registration(
                                 configuration.persistence_configuration.create_root_account(
                                     root_account_id=response_dict['Data']['RootAccountId'],
                                     root_account=json.dumps(result['RootAccountObj']),
-                                    persistence_path=persistence_path,
-                                    persistence_file=persistence_file,
+                                    persistence_path=configuration.persistence_configuration.persistence_path,
+                                    persistence_file=configuration.persistence_configuration.persistence_file,
                                     L=configuration.logger
                                 )
                     else:
