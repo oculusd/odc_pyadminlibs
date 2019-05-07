@@ -16,6 +16,7 @@ Usage with coverage:
 import unittest
 from unittest.mock import MagicMock
 import logging
+from odc_pyadminlibs import Configuration, PersistenceConfiguration, CommsConfiguration
 from odc_pycommons import OculusDLogger, DEBUG, formatter, get_utc_timestamp
 from odc_pycommons.models import CommsResponse
 #from odc_pycommons.comms import json_post, get_service_uri
@@ -27,29 +28,6 @@ import tempfile
 from decimal import Decimal
 import json
 from odc_pyadminlibs.actions.register import root_account_registration
-
-
-positive_comms_response = CommsResponse(
-    is_error=False,
-    response_code=1,
-    response_code_description=None,
-    response_data=json.dumps(
-        {
-            'Data': {
-                'RootAccountId': 'ra111111',
-                'RootAccountStatus': 'PENDING'
-            },
-            'ErrorMessage': None,
-            'IsError': False,
-            'Message': 'RootAccount created successfully',
-            'TraceId': '1111-2222-3333-4444'
-        }
-    ),
-    trace_id=None
-)
-json_post = MagicMock(return_value=positive_comms_response)
-get_service_uri = MagicMock(return_value='http://localhost/')
-DB_TEST_DIR = tempfile.gettempdir()
 
 
 class TestLogHandler(logging.Handler):
@@ -69,10 +47,57 @@ class TestRegisterRootAccount(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.test_database_file = 'test_database.sqlite'
-        self.test_database_path = Path('{}{}{}'.format(DB_TEST_DIR, os.sep, self.test_database_file))
-        if self.test_database_path.is_file():
-            os.remove('{}{}{}'.format(DB_TEST_DIR, os.sep, self.test_database_file))
+
+        # Setup the test logger
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        ch = TestLogHandler()
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+        test_logger = OculusDLogger(logger_impl=logger)
+
+        positive_comms_response = CommsResponse(
+            is_error=False,
+            response_code=1,
+            response_code_description=None,
+            response_data=json.dumps(
+                {
+                    'Data': {
+                        'RootAccountId': 'ra111111',
+                        'RootAccountStatus': 'PENDING'
+                    },
+                    'ErrorMessage': None,
+                    'IsError': False,
+                    'Message': 'RootAccount created successfully',
+                    'TraceId': '1111-2222-3333-4444'
+                }
+            ),
+            trace_id=None
+        )
+        comms_configuration = CommsConfiguration(
+            service_handlers={
+                'GetServiceUri': MagicMock(return_value='http://localhost/'),
+                'Get': None,
+                'JsonPost': MagicMock(return_value=positive_comms_response),
+            },
+            service_region='us1'
+        )
+        persistence_configuration = PersistenceConfiguration(
+            persistence_path=tempfile.gettempdir(),
+            persistence_file='accounts',
+            flags={
+                'PersistPassphrase': True,
+                'PersistOnSuccess': True,
+            }
+        )
+        self.configuration = Configuration(
+            persistence_configuration=persistence_configuration,
+            comms_configurations=comms_configuration,
+            logger=test_logger
+        )
+        if Path(self.configuration.persistence_configuration.persistence_full_path).is_file():
+            os.remove(self.configuration.persistence_configuration.persistence_full_path)
         self.conn = None
 
         # Setup the test logger
@@ -91,14 +116,8 @@ class TestRegisterRootAccount(unittest.TestCase):
             email_address='test@example.tld',
             passphrase='111 abcdefghijklm 222 *',
             account_name='unittest',
-            persist_on_success=False,
-            persistence_path=None,
-            persistence_file=None,
-            persist_with_passphrase=False,
-            service_region=None,
-            trace_id=None,
-            L=self.test_logger,
-            remote_request_function=json_post
+            configuration=self.configuration,
+            trace_id=None
         )
         self.assertIsNotNone(result)
         self.assertIsInstance(result, dict)

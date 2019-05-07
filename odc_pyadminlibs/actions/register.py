@@ -4,11 +4,8 @@
 # LICENSE.txt. If this is not the case, you can view the license online at
 # https://www.gnu.org/licenses/lgpl-3.0.txt
 
-from odc_pycommons import HOME, OculusDLogger
-from odc_pycommons.comms import json_post, get_service_uri
 from odc_pycommons.models import CommsRequest, CommsResponse, CommsRestFulRequest
-from odc_pyadminlibs.persistence import create_database_table
-from odc_pyadminlibs.persistence.root_account_persistence import create_root_account, create_root_account_table
+from odc_pyadminlibs import Configuration
 import traceback
 import os
 import json
@@ -18,14 +15,8 @@ def root_account_registration(
     email_address: str,
     passphrase: str,
     account_name: str,
-    persist_on_success: bool=True,
-    persistence_path: str=HOME,
-    persistence_file: str='accounts',
-    persist_with_passphrase: bool=False,
-    service_region: str=None,
-    trace_id: str=None,
-    L: OculusDLogger=OculusDLogger(),
-    remote_request_function: object=json_post
+    configuration: Configuration=Configuration(),
+    trace_id: str=None
 )->dict:
     result = dict()
     result['IsError'] = True
@@ -35,10 +26,14 @@ def root_account_registration(
     result['Message'] = None
     result['RootAccountObj'] = None
 
-    if persist_on_success  is True:
-        if create_root_account_table(persistence_path=persistence_path, persistence_file=persistence_file, L=L) is False:
+    if configuration.persistence_configuration.flags['PersistOnSuccess'] is True:
+        if configuration.persistence_configuration.create_root_account_table(
+            persistence_path=configuration.persistence_configuration.persistence_path,
+            persistence_file=configuration.persistence_configuration.persistence_file,
+            L=configuration.logger
+        ) is False:
             result['ErrorMessage'] = 'Failed to create persistence store. Registration call to remote service was NOT made'
-            L.error(message='Failed to create root_account persistence')
+            configuration.logger.error(message='Failed to create root_account persistence')
             raise Exception('Failed to create root_account persistence. This action cannot continue')
 
     request_data = {
@@ -46,11 +41,17 @@ def root_account_registration(
         'PassPhrase': passphrase,
     }
     request = CommsRestFulRequest(
-        uri=get_service_uri(service_name='RegisterRootAccount', region=service_region),
+        uri=configuration.comms_configurations.get_service_uri(
+            service_name='RegisterRootAccount',
+            region=configuration.comms_configurations.service_region
+        ),
         data=request_data,
         trace_id=trace_id
     )
-    req_result = remote_request_function(request=request, path_parameters={'emailAddress': email_address})
+    req_result = configuration.comms_configurations.json_post(
+        request=request,
+        path_parameters={'emailAddress': email_address}
+    )
     if req_result.is_error is False:
         if req_result.response_data is not None:
             try:
@@ -64,18 +65,18 @@ def root_account_registration(
                         result['RootAccountObj']['RootAccountUser'] = dict()
                         result['RootAccountObj']['RootAccountUser']['EmailAddress'] = email_address
                         result['RootAccountObj']['RootAccountUser']['Passphrase'] = None
-                        if persist_with_passphrase is True:
+                        if configuration.persistence_configuration.flags['PersistPassphrase']:
                             result['RootAccountObj']['RootAccountUser']['Passphrase'] = passphrase
                         result['IsError'] = False
                         result['ErrorMessage'] = None
                         if 'RootAccountId' in response_dict['Data']:
-                            if persist_on_success:                                
-                                create_root_account(
+                            if configuration.persistence_configuration.flags['PersistOnSuccess']:
+                                configuration.persistence_configuration.create_root_account(
                                     root_account_id=response_dict['Data']['RootAccountId'],
                                     root_account=json.dumps(result['RootAccountObj']),
                                     persistence_path=persistence_path,
                                     persistence_file=persistence_file,
-                                    L=L
+                                    L=configuration.logger
                                 )
                     else:
                         result['ErrorMessage'] = response_dict['ErrorMessage']
