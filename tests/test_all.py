@@ -18,12 +18,13 @@ Usage
 import unittest
 from tests.test_persistence import TestPersistenceInit
 from tests.test_persistence import TestRootAccountPersistence
+from tests.test_actions import TestRegisterRootAccount
 
 
 def suite():
     suite = unittest.TestSuite()
 
-    # Test the init module
+    # TestPersistenceInit
     suite.addTest(TestPersistenceInit('test_sql_get_connection_positive_01'))
     suite.addTest(TestPersistenceInit('test_sql_get_connection_negative_01'))
     suite.addTest(TestPersistenceInit('test_create_database_table_positive_01'))
@@ -31,7 +32,7 @@ def suite():
     suite.addTest(TestPersistenceInit('test_adapt_decimal'))
     suite.addTest(TestPersistenceInit('test_convert_decimal'))
 
-    # Test the root_account_persistence module
+    # TestRootAccountPersistence 
     suite.addTest(TestRootAccountPersistence('test_create_root_account_table_positive_01'))
     suite.addTest(TestRootAccountPersistence('test_create_root_account_positive_01'))
     suite.addTest(TestRootAccountPersistence('test_get_root_account_positive_01'))
@@ -39,6 +40,12 @@ def suite():
     suite.addTest(TestRootAccountPersistence('test_update_root_account_positive_01'))
     suite.addTest(TestRootAccountPersistence('test_update_root_account_negative_01'))
     suite.addTest(TestRootAccountPersistence('test_get_root_account_ids'))
+
+    # TestPersistenceInit
+    suite.addTest(TestRegisterRootAccount('test_register_root_account_positive_01'))
+    suite.addTest(TestRegisterRootAccount('test_register_root_account_fail_to_create_root_account_table_01'))
+    suite.addTest(TestRegisterRootAccount('test_register_root_account_remote_service_error_01'))
+    suite.addTest(TestRegisterRootAccount('test_register_root_account_invalid_response_dict_causing_exception_01'))
 
     return suite
 

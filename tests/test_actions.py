@@ -15,6 +15,7 @@ Usage with coverage:
 
 import unittest
 from unittest.mock import MagicMock
+from unittest.mock import Mock
 import logging
 from odc_pyadminlibs import Configuration, PersistenceConfiguration, CommsConfiguration
 from odc_pycommons import OculusDLogger, DEBUG, formatter, get_utc_timestamp
@@ -45,8 +46,7 @@ class TestLogHandler(logging.Handler):
 
 class TestRegisterRootAccount(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(self):
+    def setUp(self):
 
         # Setup the test logger
         logger = logging.getLogger(__name__)
@@ -100,15 +100,6 @@ class TestRegisterRootAccount(unittest.TestCase):
             os.remove(self.configuration.persistence_configuration.persistence_full_path)
         self.conn = None
 
-        # Setup the test logger
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.ch = TestLogHandler()
-        self.ch.setLevel(logging.DEBUG)
-        self.ch.setFormatter(formatter)
-        self.logger.addHandler(self.ch)
-        self.test_logger = OculusDLogger(logger_impl=self.logger)
-
     def test_register_root_account_positive_01(self):
         """This test aims to verify the return data structure of a guarenteed positive result.
         """
@@ -134,9 +125,104 @@ class TestRegisterRootAccount(unittest.TestCase):
         self.assertIsInstance(result['Message'], str)
         self.assertIsInstance(result['RootAccountObj'], dict)
         self.assertFalse(result['IsError'])
-        #self.assertTrue('')
 
+    def test_register_root_account_fail_to_create_root_account_table_01(self):
+        self.configuration.persistence_configuration = PersistenceConfiguration(
+            persistence_path=tempfile.gettempdir(),
+            persistence_file='accounts',
+            flags={
+                'PersistPassphrase': True,
+                'PersistOnSuccess': True,
+            },
+            functions={
+                'CreateDatabaseTable': Mock(side_effect=Exception('CreateDatabaseTable unavailable')),
+                'CreateRootAccountTable': MagicMock(return_value=False),
+                'CreateRootAccount': Mock(side_effect=Exception('CreateDatabaseTable unavailable')),
+            }
+        )
+        with self.assertRaises(Exception):
+            root_account_registration(
+                email_address='test@example.tld',
+                passphrase='111 abcdefghijklm 222 *',
+                account_name='unittest',
+                configuration=self.configuration,
+                trace_id=None
+            )
 
+    def test_register_root_account_remote_service_error_01(self):
+        comms_response = CommsResponse(
+            is_error=False,
+            response_code=1,
+            response_code_description=None,
+            response_data=json.dumps(
+                {
+                    'Data': None,
+                    'ErrorMessage': 'Some error occurred',
+                    'IsError': True,
+                    'Message': None,
+                    'TraceId': '1111-2222-3333-4444'
+                }
+            ),
+            trace_id=None
+        )
+        self.configuration.comms_configurations = CommsConfiguration(
+            service_handlers={
+                'GetServiceUri': MagicMock(return_value='http://localhost/'),
+                'Get': None,
+                'JsonPost': MagicMock(return_value=comms_response),
+            },
+            service_region='us1'
+        )
+        result = root_account_registration(
+            email_address='test@example.tld',
+            passphrase='111 abcdefghijklm 222 *',
+            account_name='unittest',
+            configuration=self.configuration,
+            trace_id=None
+        )
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, dict)
+        self.assertTrue('IsError' in result)
+        self.assertTrue('TraceId' in result)
+        self.assertTrue('RemoteTraceId' in result)
+        self.assertTrue('ErrorMessage' in result)
+        self.assertTrue('Message' in result)
+        self.assertTrue('RootAccountObj' in result)
+        self.assertIsInstance(result['IsError'], bool)
+        self.assertIsNone(result['TraceId'])
+        self.assertIsInstance(result['RemoteTraceId'], str)
+        self.assertIsNotNone(result['ErrorMessage'])
+        self.assertIsInstance(result['ErrorMessage'], str)
+        self.assertIsNone(result['Message'])
+        self.assertIsNone(result['RootAccountObj'])
+        self.assertTrue(result['IsError'])
+
+    def test_register_root_account_invalid_response_dict_causing_exception_01(self):
+        comms_response = CommsResponse(
+            is_error=False,
+            response_code=1,
+            response_code_description=None,
+            response_data='\n\t\0',
+            trace_id=None
+        )
+        self.configuration.comms_configurations = CommsConfiguration(
+            service_handlers={
+                'GetServiceUri': MagicMock(return_value='http://localhost/'),
+                'Get': None,
+                'JsonPost': MagicMock(return_value=comms_response),
+            },
+            service_region='us1'
+        )
+        result = root_account_registration(
+            email_address='test@example.tld',
+            passphrase='111 abcdefghijklm 222 *',
+            account_name='unittest',
+            configuration=self.configuration,
+            trace_id=None
+        )
+        self.assertIsNotNone(result)
+        self.assertTrue(result['IsError'])
+        self.assertTrue('EXCEPTION' in result['ErrorMessage'])
 
 if __name__ == '__main__':
     unittest.main()
