@@ -20,7 +20,6 @@ import logging
 from odc_pyadminlibs import Configuration, PersistenceConfiguration, CommsConfiguration
 from odc_pycommons import OculusDLogger, DEBUG, formatter, get_utc_timestamp
 from odc_pycommons.models import CommsResponse
-#from odc_pycommons.comms import json_post, get_service_uri
 from pathlib import Path
 import os
 import traceback
@@ -29,6 +28,7 @@ import tempfile
 from decimal import Decimal
 import json
 from odc_pyadminlibs.actions.register import root_account_registration
+from odc_pyadminlibs.actions.ping import check_service_response
 
 
 class TestLogHandler(logging.Handler):
@@ -223,6 +223,92 @@ class TestRegisterRootAccount(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertTrue(result['IsError'])
         self.assertTrue('EXCEPTION' in result['ErrorMessage'])
+
+
+class TestPing(unittest.TestCase):
+
+    def setUp(self):
+
+        # Setup the test logger
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        ch = TestLogHandler()
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+        test_logger = OculusDLogger(logger_impl=logger)
+
+        positive_comms_response = CommsResponse(
+            is_error=False,
+            response_code=1,
+            response_code_description=None,
+            response_data=json.dumps({"Ping": "ok"}),
+            trace_id=None
+        )
+        comms_configuration = CommsConfiguration(
+            service_handlers={
+                'GetServiceUri': MagicMock(return_value='http://localhost/'),
+                'Get': MagicMock(return_value=positive_comms_response),
+                'JsonPost': None,
+            },
+            service_region='us1'
+        )
+        persistence_configuration = PersistenceConfiguration(
+            persistence_path=tempfile.gettempdir(),
+            persistence_file='accounts',
+            flags={
+                'PersistPassphrase': True,
+                'PersistOnSuccess': True,
+            }
+        )
+        self.configuration = Configuration(
+            persistence_configuration=persistence_configuration,
+            comms_configurations=comms_configuration,
+            logger=test_logger
+        )
+        if Path(self.configuration.persistence_configuration.persistence_full_path).is_file():
+            os.remove(self.configuration.persistence_configuration.persistence_full_path)
+        self.conn = None
+
+    def test_ping_positive_01(self):
+        result = check_service_response(configuration=self.configuration)
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, dict)
+        self.assertTrue('IsError' in result)
+        self.assertTrue('TraceId' in result)
+        self.assertTrue('RemoteTraceId' in result)
+        self.assertTrue('ErrorMessage' in result)
+        self.assertTrue('Message' in result)
+        self.assertTrue('PingResult' in result)
+        self.assertIsInstance(result['IsError'], bool)
+        self.assertIsNone(result['TraceId'])
+        self.assertIsNone(result['RemoteTraceId'])
+        self.assertIsNone(result['ErrorMessage'])
+        self.assertIsInstance(result['Message'], str)
+        self.assertIsInstance(result['PingResult'], dict)
+        self.assertFalse(result['IsError'])
+
+    def test_ping_invalid_return_data_causing_exception_01(self):
+        comms_response = CommsResponse(
+            is_error=False,
+            response_code=1,
+            response_code_description=None,
+            response_data='\n\t\0',
+            trace_id=None
+        )
+        self.configuration.comms_configurations = CommsConfiguration(
+            service_handlers={
+                'GetServiceUri': MagicMock(return_value='http://localhost/'),
+                'Get': MagicMock(return_value=comms_response),
+                'JsonPost': None,
+            },
+            service_region='us1'
+        )
+        result = check_service_response(configuration=self.configuration)
+        self.assertIsNotNone(result)
+        self.assertTrue(result['IsError'])
+        self.assertTrue('EXCEPTION' in result['ErrorMessage'])
+
 
 if __name__ == '__main__':
     unittest.main()
